@@ -2,7 +2,7 @@
 .streamlit/secrets.toml
 
 # settings
-.vscode/settings.json
+.vscode/*
 
 # Logs
 log
@@ -15,7 +15,7 @@ data/**
 .DS_Store
 
 # dotenv environment variable files
-.env
+.venv
 
 # CMake
 cmake-build-*/
