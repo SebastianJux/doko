@@ -1,0 +1,21 @@
+# streamline
+.streamlit/secrets.toml
+
+# settings
+.vscode/settings.json
+
+# Logs
+log
+logs
+
+# data
+data/**
+
+### macOS ###
+.DS_Store
+
+# dotenv environment variable files
+.env
+
+# CMake
+cmake-build-*/
