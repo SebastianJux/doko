@@ -45,14 +45,16 @@ if not "tagesliste" in st.session_state:
                 st.session_state.n_players -= 1
                 st.rerun()
     
-    names = player_structure(st.session_state["n_players"], spielernamen)
-    # for i in range(1, st.session_state.n_players+1):
-    #     selected_name = st.selectbox(
-    #         "Wähle Spieler aus",
-    #         options=spielernamen,
-    #         key=f"name_{i}"
-    #     )
-    #     names.append(selected_name)
+    # names = player_structure(st.session_state["n_players"], spielernamen)
+    st.write("Spieler müssen in der richtigen Reihenfolge eingetragen werden!")
+    for i in range(1, st.session_state.n_players+1):
+        options = [col for col in spielernamen if col not in names]
+        selected_name = st.selectbox(
+            "Wähle Spieler aus",
+            options=options,
+            key=f"name_{i}"
+        )
+        names.append(selected_name)
 
     # Button to generate DataFrame
     if st.button("Erstelle Tagesliste"):
