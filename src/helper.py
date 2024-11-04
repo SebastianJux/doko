@@ -119,3 +119,34 @@ def player_structure(n_players, spielernamen):
         selected_name = st.selectbox("Wähle Spieler aus", options=options, key="name_3")
         names.append(selected_name)
     return names
+
+def determine_active_players(names, dealer):
+    n_player = len(names)
+    if n_player == 4:
+        active_players = names
+    elif n_player == 5:
+        active_players = [player for i, player in enumerate(names) if i not in [dealer]]
+    elif n_player == 6:
+        dealer2 = (dealer + 3) % n_player
+        active_players = [player for i, player in enumerate(names) if i not in [dealer, dealer2]]
+    elif n_player == 7:
+        dealer2 = (dealer + 3) % n_player
+        dealer3 = (dealer + 6) % n_player
+        active_players = [player for i, player in enumerate(names) if i not in [dealer, dealer2, dealer3]]
+    return active_players
+
+def game_quality_check(game_type, player, winners, points):
+    if game_type == "Pflichtsolo":
+        if st.session_state["pflicht_open"][player] == 0:
+            st.error(f"{player} hat kein Pflichtsolo mehr offen.")
+            st.stop()
+        else: 
+            st.session_state["pflicht_open"][player] -= 1
+    
+    if game_type not in ["Pflichtsolo", "Lustsolo"] and len(winners) != 2:
+        st.error(f"Ein Spiel des Types {game_type} braucht immer 2 Gewinner.")
+        st.stop()
+        
+    if game_type == "Schmeißen" and points != 0:
+        st.error("Ein Schmeißen muss immer 0 Punkte haben")
+        st.stop()
