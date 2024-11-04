@@ -96,19 +96,21 @@ else:
         st.session_state["dealer"] = random.randrange(len(st.session_state.names))
         st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
     
-    st.write("Status")
-    status_cols = st.columns(3)
-    with status_cols[0]:
-        st.write(f"{st.session_state.names[st.session_state.dealer]} muss geben")
-    with status_cols[1]:
-        
-        st.write(f"""Normalspiele: 
-                 {st.session_state.tagesliste.loc[~st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo', 'Schmeißen']), :].shape[0]}
-                 /{st.session_state.meta['n_normale_spiele']*st.session_state.n_players}""")
-    with status_cols[2]:
-                st.write(f"""Pflichtsoli: 
-                 {st.session_state.tagesliste.loc[st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo']), :].shape[0]}
-                 /{st.session_state.meta['n_pflichtspiele']*st.session_state.n_players}""")
+    with st.container(border=True):
+        st.write("Status")
+        status_cols = st.columns(3)
+        with status_cols[0]:
+            st.write(f"{st.session_state.names[st.session_state.dealer]} muss geben")
+        with status_cols[1]:
+            
+            st.write(f"""Normalspiele: 
+                    {st.session_state.tagesliste.loc[~st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo', 'Schmeißen']), :].shape[0]}
+                    /{st.session_state.meta['n_normale_spiele']*st.session_state.n_players}""")
+        with status_cols[2]:
+                    st.write(f"""Pflichtsoli: 
+                    {st.session_state.tagesliste.loc[st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo']), :].shape[0]}
+                    /{st.session_state.meta['n_pflichtspiele']*st.session_state.n_players}""")
+    
     if st.session_state.meta["n_pflichtspiele"] > 0:
         if "pflicht_open" not in st.session_state:
             st.session_state["pflicht_open"] = {
@@ -117,21 +119,26 @@ else:
                     - st.session_state.tagesliste.loc[(st.session_state.tagesliste["Pflichtsolo Spieler"] == n) & (st.session_state.tagesliste["Spiel Type"] == "Pflichtsolo"), :].shape[0]
                 ) for n in st.session_state.names
             }
-        st.write("Pflichtsoli offen:")
-        cols = st.columns(st.session_state.n_players)
-        for i, n in enumerate(st.session_state.names):
-            with cols[i]:
-                st.write(f"{n}: {st.session_state['pflicht_open'][n]}")
+        with st.container(border=True):
+            st.write("Pflichtsoli offen:")
+            cols = st.columns(st.session_state.n_players)
+            for i, n in enumerate(st.session_state.names):
+                with cols[i]:
+                    st.write(f"{n}: {st.session_state['pflicht_open'][n]}")
     
     if "spielindex" not in st.session_state:
         st.session_state["spielindex"] = 1
             
-    st.write("Neues Spiel:")
-    
     # Input fields to add new data (points, winners, Spiel Type)
-    points = st.number_input("Punkte", min_value=0, step=1, key="points")
-    winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="winners")
-    game_type = st.selectbox("Spiel Type", options=GAMETYPES, key="game_type")
+    with st.container(border=True):
+        st.write("Neues Spiel:")
+        status_cols = st.columns(3)
+        with status_cols[0]:
+            points = st.number_input("Punkte", min_value=0, step=1, key="points")
+        with status_cols[1]:
+            winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="winners")
+        with status_cols[2]:
+            game_type = st.selectbox("Spiel Type", options=GAMETYPES, key="game_type")
 
     # Button to add new row with the entered data
     if st.button("Bestätige"):
