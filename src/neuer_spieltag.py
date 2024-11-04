@@ -91,11 +91,24 @@ if "tagesliste" not in st.session_state:
 else:
     st.title("Tagesliste")
     
+    
     if "dealer" not in st.session_state:
         st.session_state["dealer"] = random.randrange(len(st.session_state.names))
         st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
-    st.write(f"{st.session_state.names[st.session_state.dealer]} muss geben")
     
+    st.write("Status")
+    status_cols = st.columns(3)
+    with status_cols[0]:
+        st.write(f"{st.session_state.names[st.session_state.dealer]} muss geben")
+    with status_cols[1]:
+        
+        st.write(f"""Normalspiele: 
+                 {st.session_state.tagesliste.loc[~st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo', 'Schmeißen']), :].shape[0]}
+                 /{st.session_state.meta['n_normale_spiele']*st.session_state.n_players}""")
+    with status_cols[2]:
+                st.write(f"""Pflichtsoli: 
+                 {st.session_state.tagesliste.loc[st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo']), :].shape[0]}
+                 /{st.session_state.meta['n_pflichtspiele']*st.session_state.n_players}""")
     if st.session_state.meta["n_pflichtspiele"] > 0:
         if "pflicht_open" not in st.session_state:
             st.session_state["pflicht_open"] = {
@@ -104,7 +117,7 @@ else:
                     - st.session_state.tagesliste.loc[(st.session_state.tagesliste["Pflichtsolo Spieler"] == n) & (st.session_state.tagesliste["Spiel Type"] == "Pflichtsolo"), :].shape[0]
                 ) for n in st.session_state.names
             }
-        st.write("Pflicht Soli offen:")
+        st.write("Pflichtsoli offen:")
         cols = st.columns(st.session_state.n_players)
         for i, n in enumerate(st.session_state.names):
             with cols[i]:
