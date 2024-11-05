@@ -11,7 +11,19 @@ from src.helper import (
 )
 import random
 
-GAMETYPES: list = ["Normalspiel", "Pflichtsolo", "Lustsolo", "Hochzeit", "Armut", "Schmeißen"]
+GAMETYPES: list[str] = ["Normalspiel", "Pflichtsolo", "Lustsolo", "Hochzeit", "Armut", "Schmeißen"]
+DF_COLS: list[str] = [
+    "Spiel Index", 
+    "Spiel", 
+    "Spiel Type", 
+    "Dealer", 
+    "Pflichtsolo Spieler", 
+    "Hochzeit Spieler", 
+    "Hochzeit Partner", 
+    "Welches Solo", 
+    "Meta"
+]
+SOlI: list[str] = ["Trumpfsolo", "Bubensolo", "Damensolo", "Stille Hochzeit", "Fleischlos"]
 
 if "tagesliste" not in st.session_state:
     st.title("Configuriere Tagesliste")
@@ -23,11 +35,12 @@ if "tagesliste" not in st.session_state:
             tmp_df['Meta'] = tmp_df['Meta'].apply(json.loads)
     
             st.session_state["names"] = [
-                col for col in tmp_df.columns if col not in ["Spiel Index", "Spiel", "Spiel Type", "Dealer", "Pflichtsolo Spieler", "Meta"]
+                col for col in tmp_df.columns if col not in DF_COLS
             ]
             st.session_state["tagesliste"] = tmp_df
             st.session_state["n_players"] = len(st.session_state["names"])
             st.session_state["meta"] = tmp_df["Meta"].iloc[-1]
+            st.session_state["spielindex"] = tmp_df["Spiel Index"].iloc[-1] + 1
             
             game_type = tmp_df["Spiel Type"].iloc[-1]
             st.session_state["dealer"] = st.session_state.names.index(tmp_df["Dealer"].iloc[-1])
@@ -81,7 +94,7 @@ if "tagesliste" not in st.session_state:
     # Button to generate DataFrame
     if st.button("Erstelle Tagesliste"):
         # Create DataFrame with selected names as columns
-        df_cols = ["Spiel Index"] + names + ["Spiel", "Spiel Type", "Dealer", "Pflichtsolo Spieler", "Meta"]
+        df_cols = DF_COLS[0:1] + names + DF_COLS[1:]
         st.session_state["tagesliste"] = pd.DataFrame(columns=df_cols)
         st.session_state["names"] = names
         st.session_state["meta"] = {"n_normale_spiele": n_normale_spiele, "n_pflichtspiele": n_pflichtspiele}
@@ -134,52 +147,69 @@ else:
         st.write("Neues Spiel:")
         status_cols = st.columns(3)
         with status_cols[0]:
-            points = st.number_input("Punkte", min_value=0, step=1, key="points")
-        with status_cols[1]:
-            winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="winners")
-        with status_cols[2]:
             game_type = st.selectbox("Spiel Type", options=GAMETYPES, key="game_type")
-
-    # Button to add new row with the entered data
-    if st.button("Bestätige"):
-        winner_points = points
-        loser_points = points
-        player = None
-        if game_type in ["Pflichtsolo", "Lustsolo"]:
-            if len(winners) == 1:
-                player = winners[0]
-                winner_points *= 3
-            elif len(winners) == 3:
-                player = [name for name in st.session_state.active_players if name not in winners][0]
-                loser_points *= 3
-            else:
-                st.error("Falsche Anzahl an Spielern für ein Solo.")
-                st.stop()
+        with status_cols[1]:
+            points = st.number_input("Punkte", min_value=0, step=1, key="points")
+        with status_cols[2]:
+            winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="winners")
             
-        game_quality_check(game_type, player, winners, points)
+        who_hochzeit = None
+        which_solo = None
+        if game_type == "Hochzeit":
+            who_hochzeit = st.selectbox("Wer hatte Hochzeit?", options=st.session_state.active_players, key="who_hochzeit")
+        elif game_type in ["Pflichtsolo", "Lustsolo"]:
+            which_solo = st.selectbox("Welches Solo?", options=SOlI, key="which_solo")
+
+        # Button to add new row with the entered data
+        if st.button("Bestätige"):
+            winner_points = points
+            loser_points = points
+            player = None
+            if game_type in ["Pflichtsolo", "Lustsolo"]:
+                if len(winners) == 1:
+                    player = winners[0]
+                    winner_points *= 3
+                elif len(winners) == 3:
+                    player = [name for name in st.session_state.active_players if name not in winners][0]
+                    loser_points *= 3
+                else:
+                    st.error("Falsche Anzahl an Spielern für ein Solo.")
+                    st.stop()
+            
+            game_quality_check(game_type, player, winners, points)
+            
+            hochzeit_partner = None
+            if game_type == "Hochzeit":
+                if who_hochzeit in winners:
+                    hochzeit_partner = [p for p in winners if p != who_hochzeit][0]
+                else:
+                    hochzeit_partner = [p for p in st.session_state.active_players if p not in [who_hochzeit] + winners][0]
         
-        # Add new row to the DataFrame
-        new_row = pd.DataFrame(
-            {
-                "Spiel Index": st.session_state.spielindex,
-                **{name: winner_points for name in winners},
-                **{name: loser_points*-1 for name in st.session_state.active_players if name not in winners},
-                "Spiel": points,
-                "Spiel Type": game_type,
-                "Dealer": st.session_state.names[st.session_state.dealer],
-                "Pflichtsolo Spieler": player,
-                "Meta": [st.session_state.meta]
-            }, index=[0]
-        )
+            # Add new row to the DataFrame
+            new_row = pd.DataFrame(
+                {
+                    "Spiel Index": st.session_state.spielindex,
+                    **{name: winner_points for name in winners},
+                    **{name: loser_points*-1 for name in st.session_state.active_players if name not in winners},
+                    "Spiel": points,
+                    "Spiel Type": game_type,
+                    "Dealer": st.session_state.names[st.session_state.dealer],
+                    "Pflichtsolo Spieler": player,
+                    "Hochzeit Spieler": who_hochzeit,
+                    "Hochzeit Partner": hochzeit_partner,
+                    "Welches Solo": which_solo,
+                    "Meta": [st.session_state.meta]
+                }, index=[0]
+            )
+            
+            st.session_state.spielindex += 1
+            st.session_state.tagesliste = pd.concat([st.session_state.tagesliste, new_row], ignore_index=True)
+            write_csv_to_blob(st.session_state.tagesliste, "tagesliste-tmp", "tmp.csv")
         
-        st.session_state.spielindex += 1
-        st.session_state.tagesliste = pd.concat([st.session_state.tagesliste, new_row], ignore_index=True)
-        write_csv_to_blob(st.session_state.tagesliste, "tagesliste-tmp", "tmp.csv")
-        
-        if game_type not in ["Pflichtsolo", "Schmeißen"]:
-            st.session_state.dealer = (st.session_state.dealer + 1) % st.session_state.n_players
-            st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
-        st.rerun()
+            if game_type not in ["Pflichtsolo", "Schmeißen"]:
+                st.session_state.dealer = (st.session_state.dealer + 1) % st.session_state.n_players
+                st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
+            st.rerun()
         
     # Display the DataFrame
     st.write("Tagesliste:")
