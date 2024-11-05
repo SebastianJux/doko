@@ -8,7 +8,8 @@ start_page = st.Page("src/start_page.py", title="Sartseite", icon="🔮", defaul
 new_day = st.Page("src/neuer_spieltag.py", title="Neuer Spieltag", icon="🆕")
 players = st.Page("src/players.py", title="Spieler*innen", icon="👋")
 regeln = st.Page("src/regeln.py", title="Regeln", icon="ℹ️")
+tests = st.Page("src/tests.py", title="Tests", icon="ℹ️")
 
-pg = st.navigation([start_page, new_day, players, regeln])
+pg = st.navigation([start_page, new_day, players, regeln, tests])
 
 pg.run()

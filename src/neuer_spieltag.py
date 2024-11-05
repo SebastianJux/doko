@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
 import json
 from src.helper import (
@@ -24,6 +25,22 @@ DF_COLS: list[str] = [
     "Meta"
 ]
 SOlI: list[str] = ["Trumpfsolo", "Bubensolo", "Damensolo", "Stille Hochzeit", "Fleischlos"]
+
+# Add CSS to set a background image
+# st.markdown(
+#     """
+#     <style>
+#     .stApp {
+#         background-image: url("https://spiele-palast.de/app/uploads/sites/6/2021/09/DE_doko_in-game_v3-1110x694.jpg");
+#         background-size: cover;
+#         background-position: center;
+#         background-repeat: no-repeat;
+#         background-attachment: fixed;
+#     }
+#     </style>
+#     """,
+#     unsafe_allow_html=True
+# )
 
 if "tagesliste" not in st.session_state:
     st.title("Configuriere Tagesliste")
@@ -109,7 +126,7 @@ else:
         st.session_state["dealer"] = random.randrange(len(st.session_state.names))
         st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
     
-    with st.container(border=True):
+    with st.container(border=True):        
         st.write("Status")
         status_cols = st.columns(3)
         with status_cols[0]:
