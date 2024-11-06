@@ -8,13 +8,16 @@ from src.helper import (
     finalise_tagesliste, 
     # player_structure, 
     determine_active_players,
-    game_quality_check
+    game_quality_check,
+    display_extrapunkte,
+    compute_points
 )
 import random
 
 GAMETYPES: list[str] = ["Normalspiel", "Pflichtsolo", "Lustsolo", "Hochzeit", "Armut", "Schmeißen"]
 DF_COLS: list[str] = [
     "Spiel Index", 
+    "Spielpunkte",
     "Spiel", 
     "Spiel Type", 
     "Dealer", 
@@ -22,6 +25,8 @@ DF_COLS: list[str] = [
     "Hochzeit Spieler", 
     "Hochzeit Partner", 
     "Welches Solo", 
+    "Extra Punkte", 
+    "Ansagen",
     "Meta"
 ]
 SOlI: list[str] = ["Trumpfsolo", "Bubensolo", "Damensolo", "Stille Hochzeit", "Fleischlos"]
@@ -48,8 +53,9 @@ if "tagesliste" not in st.session_state:
     if st.button("Weiter von letzter Tagesliste"):
         try:
             tmp_df = read_csv_from_blob("tagesliste-tmp", "tmp.csv")
-            tmp_df['Meta'] = tmp_df['Meta'].apply(lambda x: x.replace("'", '"'))
-            tmp_df['Meta'] = tmp_df['Meta'].apply(json.loads)
+            for col in ["Extra Punkte", "Ansagen", "Meta"]:
+                tmp_df[col] = tmp_df[col].apply(lambda x: x.replace("'", '"'))
+                tmp_df[col] = tmp_df[col].apply(json.loads)
     
             st.session_state["names"] = [
                 col for col in tmp_df.columns if col not in DF_COLS
@@ -166,19 +172,29 @@ else:
         with status_cols[0]:
             game_type = st.selectbox("Spiel Type", options=GAMETYPES, key="game_type")
         with status_cols[1]:
-            points = st.number_input("Punkte", min_value=0, step=1, key="points")
+            game_points = st.number_input("Erzielte Punkte", min_value=0, step=1, key="game_points")
         with status_cols[2]:
             winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="winners")
-            
+        
         who_hochzeit = None
+        who_armut = None
         which_solo = None
         if game_type == "Hochzeit":
             who_hochzeit = st.selectbox("Wer hatte Hochzeit?", options=st.session_state.active_players, key="who_hochzeit")
+        elif game_type == "Armut":
+            who_armut = st.selectbox("Wer hatte Armut?", options=st.session_state.active_players, key="who_armut")
         elif game_type in ["Pflichtsolo", "Lustsolo"]:
             which_solo = st.selectbox("Welches Solo?", options=SOlI, key="which_solo")
+        
+        extra_points, ansagen_dict = display_extrapunkte(st.session_state.active_players, game_type)
+        points = compute_points(winners, game_points, ansagen_dict, extra_points)
+        st.write(f"Punkte: {points}")
 
         # Button to add new row with the entered data
         if st.button("Bestätige"):
+            
+            re_players = winners if extra_points["gegen_alte"] == "Nein" else [p for p in st.session_state.active_players if p not in winners]
+
             winner_points = points
             loser_points = points
             player = None
@@ -195,12 +211,18 @@ else:
             
             game_quality_check(game_type, player, winners, points)
             
+            armut_partner = None
             hochzeit_partner = None
             if game_type == "Hochzeit":
                 if who_hochzeit in winners:
                     hochzeit_partner = [p for p in winners if p != who_hochzeit][0]
                 else:
                     hochzeit_partner = [p for p in st.session_state.active_players if p not in [who_hochzeit] + winners][0]
+            elif game_type == "Armut":
+                if who_armut in winners:
+                    armut_partner = [p for p in winners if p != who_armut][0]
+                else:
+                    armut_partner = [p for p in st.session_state.active_players if p not in [who_armut] + winners][0]
         
             # Add new row to the DataFrame
             new_row = pd.DataFrame(
@@ -208,13 +230,18 @@ else:
                     "Spiel Index": st.session_state.spielindex,
                     **{name: winner_points for name in winners},
                     **{name: loser_points*-1 for name in st.session_state.active_players if name not in winners},
+                    "Spielpunkte": game_points,
                     "Spiel": points,
                     "Spiel Type": game_type,
                     "Dealer": st.session_state.names[st.session_state.dealer],
                     "Pflichtsolo Spieler": player,
                     "Hochzeit Spieler": who_hochzeit,
                     "Hochzeit Partner": hochzeit_partner,
+                    "Armut Spieler": who_armut,
+                    "Armut Partner": armut_partner,
                     "Welches Solo": which_solo,
+                    "Extra Punkte": [extra_points], 
+                    "Ansagen": [ansagen_dict],
                     "Meta": [st.session_state.meta]
                 }, index=[0]
             )

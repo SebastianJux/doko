@@ -150,3 +150,107 @@ def game_quality_check(game_type, player, winners, points):
     if game_type == "Schmeißen" and points != 0:
         st.error("Ein Schmeißen muss immer 0 Punkte haben")
         st.stop()
+
+def display_extrapunkte(players, game_type):
+    extra_points = {}
+    if game_type not in ["Pflichtsolo", "Lustsolo"]:
+        with st.expander("Extrapunkte:"):
+            extra_points["gegen_alte"] = st.selectbox("Gegen die Alten?", options=["Nein", "Ja"], key="gegen_alte")
+            extra_points["w_fuchs"] = st.selectbox("Fuchs gefangen bei Gewinner?", options=[0, 1, 2], key="w_fuchs")
+            extra_points["l_fuchs"] = st.selectbox("Fuchs gefangen bei Verlierer?", options=[0, 1, 2], key="l_fuchs")
+            extra_points["w_doko"] = st.selectbox("Doppelkopf von Gewinner?", options=[0, 1, 2, 3], key="w_doko")
+            extra_points["l_doko"] = st.selectbox("Doppelkopf von Verlierer?", options=[0, 1, 2, 3], key="l_doko")
+            extra_points["charlie"] = st.selectbox("Letzten Stich mit Kalle?", options=[None]+players, key="charlie")
+            extra_points["charlie_g"] = st.selectbox("Wessen Kalle wurde gefangen?", options=[None]+players, key="charlie_g")
+
+    re_cols = st.columns(5)
+    ansagen_dict = {}
+    with re_cols[0]:
+        ansagen_dict["Re"] = st.selectbox("Re:", options=[None]+players, key="Re")
+        if ansagen_dict["Re"] is not None:
+            with re_cols[1]:
+                ansagen_dict["Re_Keine90"] = st.selectbox("Re keine 90:", options=[None]+players, key="Re_Keine90")
+                if ansagen_dict["Re_Keine90"] is not None:
+                    with re_cols[2]:
+                        ansagen_dict["Re_Keine60"] = st.selectbox("Re keine 60:", options=[None]+players, key="Re_Keine60")
+                        if ansagen_dict["Re_Keine60"] is not None:
+                            with re_cols[3]:
+                                ansagen_dict["Re_Keine30"] = st.selectbox("Re keine 30:", options=[None]+players, key="Re_Keine30")
+                                if ansagen_dict["Re_Keine30"] is not None:
+                                    with re_cols[4]:
+                                        ansagen_dict["ReSchwarz"] = st.selectbox("Re Schwarz:", options=[None]+players, key="ReSchwarz")
+    contra_cols = st.columns(5)
+    with contra_cols[0]:
+        ansagen_dict["Contra"] = st.selectbox("Contra:", options=[None]+players, key="Contra")
+        if ansagen_dict["Contra"] is not None:
+            with contra_cols[1]:
+                ansagen_dict["Contra_Keine90"] = st.selectbox("Contra keine 90:", options=[None]+players, key="Contra_Keine90")
+                if ansagen_dict["Contra_Keine90"] is not None:
+                    with contra_cols[2]:
+                        ansagen_dict["Contra_Keine60"] = st.selectbox("Contra keine 60:", options=[None]+players, key="Contra_Keine60")
+                        if ansagen_dict["Contra_Keine60"] is not None:
+                            with contra_cols[3]:
+                                ansagen_dict["Contra_Keine30"] = st.selectbox("Contra keine 30:", options=[None]+players, key="Contra_Keine30")
+                                if ansagen_dict["Contra_Keine30"] is not None:
+                                    with contra_cols[4]:
+                                        ansagen_dict["ContraSchwarz"] = st.selectbox("Contra Schwarz:", options=[None]+players, key="ContraSchwarz")
+                
+    return extra_points, ansagen_dict
+
+def compute_points(winners, game_points, ansagen_dict, extra_points):
+    points = 1
+    
+    # Punkte für Spielpunkte
+    points += max((game_points - 121) // 30, 0)
+    if game_points == 240:
+        points += 1
+    
+    # Extrapunkte
+    if extra_points["gegen_alte"] == "Ja":
+        points += 1
+    if extra_points["w_fuchs"] > 0:
+        points += extra_points["w_fuchs"]
+    if extra_points["l_fuchs"] > 0:
+        points -= extra_points["l_fuchs"]
+    if extra_points["w_doko"] > 0:
+        points += extra_points["w_doko"]
+    if extra_points["l_doko"] > 0:
+        points -= extra_points["l_doko"]
+    if extra_points["charlie"] is not None:
+        if extra_points["charlie"] in winners:
+            points += 1
+        else:
+            points -= 1
+    if extra_points["charlie_g"] is not None:
+        if extra_points["charlie_g"] in winners:
+            points -= 1
+        else:
+            points += 1
+        
+    # Punkte für Ansagen
+    for key, value in ansagen_dict.items():
+        if value is not None:
+            points += 1
+            if key in ["Re", "Contra"]:
+                points += 1
+                
+    if extra_points["gegen_alte"] == "Ja":
+        if "Re_Keine90" in ansagen_dict.keys() and game_points > 120:
+            points += 1
+            if "Re_Keine60" in ansagen_dict.keys() and game_points > 90:
+                points += 1
+                if "Re_Keine30" in ansagen_dict.keys() and game_points > 60:
+                    points += 1
+                    if "ReSchwarz" in ansagen_dict.keys() and game_points > 30:
+                        points += 1
+    else:
+        if "Contra_Keine90" in ansagen_dict.keys() and game_points > 120:
+            points += 1
+            if "Contra_Keine60" in ansagen_dict.keys() and game_points > 90:
+                points += 1
+                if "Contra_Keine30" in ansagen_dict.keys() and game_points > 60:
+                    points += 1
+                    if "ContraSchwarz" in ansagen_dict.keys() and game_points > 30:
+                        points += 1  
+    
+    return points
