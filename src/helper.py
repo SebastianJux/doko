@@ -162,6 +162,14 @@ def display_extrapunkte(players, game_type):
             extra_points["l_doko"] = st.selectbox("Doppelkopf von Verlierer?", options=[0, 1, 2, 3], key="l_doko")
             extra_points["charlie"] = st.selectbox("Letzten Stich mit Kalle?", options=[None]+players, key="charlie")
             extra_points["charlie_g"] = st.selectbox("Wessen Kalle wurde gefangen?", options=[None]+players, key="charlie_g")
+    else:
+        extra_points["gegen_alte"] = "Nein"
+        extra_points["w_fuchs"] = 0
+        extra_points["l_fuchs"] = 0
+        extra_points["w_doko"] = 0
+        extra_points["l_doko"] = 0
+        extra_points["charlie"] = None
+        extra_points["charlie_g"] = None
 
     re_cols = st.columns(5)
     ansagen_dict = {}
