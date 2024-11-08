@@ -3,75 +3,43 @@ from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
 import json
 from src.helper import (
-    read_csv_from_blob, 
-    write_csv_to_blob, 
+    read_parquet_from_blob, 
+    write_parquet_to_blob, 
     finalise_tagesliste, 
     # player_structure, 
     determine_active_players,
     game_quality_check,
     display_extrapunkte,
-    compute_points
+    compute_points,
+    continue_tagesliste
 )
 import random
 
-GAMETYPES: list[str] = ["Normalspiel", "Pflichtsolo", "Lustsolo", "Hochzeit", "Armut", "Schmeißen"]
-DF_COLS: list[str] = [
+GAMETYPES = ["Normalspiel", "Pflichtsolo", "Lustsolo", "Hochzeit", "Armut", "Schmeißen"]
+DF_COLS = [
     "Spiel Index", 
     "Spielpunkte",
     "Spiel", 
     "Spiel Type", 
     "Dealer", 
-    "Pflichtsolo Spieler", 
+    "Pflichtsolo Spieler",
     "Hochzeit Spieler", 
     "Hochzeit Partner", 
+    "Armut Spieler",
+    "Armut Partner",
     "Welches Solo", 
     "Extra Punkte", 
     "Ansagen",
     "Meta"
 ]
-SOlI: list[str] = ["Trumpfsolo", "Bubensolo", "Damensolo", "Stille Hochzeit", "Fleischlos"]
-
-# Add CSS to set a background image
-# st.markdown(
-#     """
-#     <style>
-#     .stApp {
-#         background-image: url("https://spiele-palast.de/app/uploads/sites/6/2021/09/DE_doko_in-game_v3-1110x694.jpg");
-#         background-size: cover;
-#         background-position: center;
-#         background-repeat: no-repeat;
-#         background-attachment: fixed;
-#     }
-#     </style>
-#     """,
-#     unsafe_allow_html=True
-# )
+SOlI = ["Trumpfsolo", "Bubensolo", "Damensolo", "Stille Hochzeit", "Fleischlos"]
 
 if "tagesliste" not in st.session_state:
     st.title("Configuriere Tagesliste")
     
     if st.button("Weiter von letzter Tagesliste"):
         try:
-            tmp_df = read_csv_from_blob("tagesliste-tmp", "tmp.csv")
-            for col in ["Extra Punkte", "Ansagen", "Meta"]:
-                tmp_df[col] = tmp_df[col].apply(lambda x: x.replace("'", '"'))
-                tmp_df[col] = tmp_df[col].apply(json.loads)
-    
-            st.session_state["names"] = [
-                col for col in tmp_df.columns if col not in DF_COLS
-            ]
-            st.session_state["tagesliste"] = tmp_df
-            st.session_state["n_players"] = len(st.session_state["names"])
-            st.session_state["meta"] = tmp_df["Meta"].iloc[-1]
-            st.session_state["spielindex"] = tmp_df["Spiel Index"].iloc[-1] + 1
-            
-            game_type = tmp_df["Spiel Type"].iloc[-1]
-            st.session_state["dealer"] = st.session_state.names.index(tmp_df["Dealer"].iloc[-1])
-            if game_type not in ["Pflichtsolo", "Schmeißen"]:
-                st.session_state.dealer = (st.session_state.dealer + 1) % st.session_state.n_players
-            st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
-   
-            st.rerun()
+            continue_tagesliste(DF_COLS)
             
         except Exception:
             st.error("Tagesliste kann nicht weitergeführt werden.")
@@ -118,18 +86,25 @@ if "tagesliste" not in st.session_state:
     if st.button("Erstelle Tagesliste"):
         # Create DataFrame with selected names as columns
         df_cols = DF_COLS[0:1] + names + DF_COLS[1:]
-        st.session_state["tagesliste"] = pd.DataFrame(columns=df_cols)
         st.session_state["names"] = names
-        st.session_state["meta"] = {"n_normale_spiele": n_normale_spiele, "n_pflichtspiele": n_pflichtspiele}
-        
+        st.session_state["dealer"] = random.randrange(len(st.session_state.names))
+        st.session_state["tagesliste"] = pd.DataFrame({
+            "Meta": [{
+                "n_normale_spiele": n_normale_spiele, 
+                "n_pflichtspiele": n_pflichtspiele
+            }],
+            "Dealer": st.session_state.names[st.session_state.dealer],
+            "Spiel Index": 0,
+            }, columns=df_cols
+        )
+        st.session_state["meta"] = st.session_state["tagesliste"]["Meta"].iloc[0]
+        write_parquet_to_blob(st.session_state.tagesliste, "tagesliste-tmp", "tmp.parquet")
         st.rerun()
 
 else:
     st.title("Tagesliste")
     
-    
-    if "dealer" not in st.session_state:
-        st.session_state["dealer"] = random.randrange(len(st.session_state.names))
+    if "active_players" not in st.session_state:
         st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
     
     with st.container(border=True):        
@@ -170,21 +145,21 @@ else:
         st.write("Neues Spiel:")
         status_cols = st.columns(3)
         with status_cols[0]:
-            game_type = st.selectbox("Spiel Type", options=GAMETYPES, key="game_type")
+            game_type = st.selectbox("Spiel Type", options=GAMETYPES, key="selectbox_game_type")
         with status_cols[1]:
-            game_points = st.number_input("Erzielte Punkte", min_value=0, step=1, key="game_points")
+            game_points = st.number_input("Erzielte Punkte", min_value=0, step=1, key="selectbox_game_points")
         with status_cols[2]:
-            winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="winners")
+            winners: list[str] = st.multiselect("Sieger", options=st.session_state.active_players, key="selectbox_winners")
         
         who_hochzeit = None
         who_armut = None
         which_solo = None
         if game_type == "Hochzeit":
-            who_hochzeit = st.selectbox("Wer hatte Hochzeit?", options=st.session_state.active_players, key="who_hochzeit")
+            who_hochzeit = st.selectbox("Wer hatte Hochzeit?", options=st.session_state.active_players, key="selectbox_who_hochzeit")
         elif game_type == "Armut":
-            who_armut = st.selectbox("Wer hatte Armut?", options=st.session_state.active_players, key="who_armut")
+            who_armut = st.selectbox("Wer hatte Armut?", options=st.session_state.active_players, key="selectbox_who_armut")
         elif game_type in ["Pflichtsolo", "Lustsolo"]:
-            which_solo = st.selectbox("Welches Solo?", options=SOlI, key="which_solo")
+            which_solo = st.selectbox("Welches Solo?", options=SOlI, key="selectbox_which_solo")
         
         extra_points, ansagen_dict = display_extrapunkte(st.session_state.active_players, game_type)
         points = compute_points(winners, game_points, ansagen_dict, extra_points)
@@ -248,19 +223,20 @@ else:
             
             st.session_state.spielindex += 1
             st.session_state.tagesliste = pd.concat([st.session_state.tagesliste, new_row], ignore_index=True)
-            write_csv_to_blob(st.session_state.tagesliste, "tagesliste-tmp", "tmp.csv")
+            write_parquet_to_blob(st.session_state.tagesliste, "tagesliste-tmp", "tmp.parquet")
         
             if game_type not in ["Pflichtsolo", "Schmeißen"]:
                 st.session_state.dealer = (st.session_state.dealer + 1) % st.session_state.n_players
                 st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
+                
             st.rerun()
         
     # Display the DataFrame
     st.write("Tagesliste:")
-    st.dataframe(st.session_state.tagesliste.drop(columns=["Meta"]), hide_index=True)
+    st.dataframe(st.session_state.tagesliste.iloc[-1:0:-1, :].drop(columns=["Meta"]), hide_index=True)
     
     st.write("Tagesliste Aggregiert:")
-    st.dataframe(st.session_state.tagesliste[st.session_state.names].sum().to_frame().T, hide_index=True)
+    st.dataframe(st.session_state.tagesliste[st.session_state.names].iloc[1:, :].sum().to_frame().T, hide_index=True)
 
     # Button to clear the DataFrame from session state
     if st.button("Beende Tagesliste"):
