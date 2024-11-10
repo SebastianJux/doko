@@ -17,4 +17,4 @@ year_overview["Datum"] = year_overview["Datum"].astype("str")
 st.dataframe(year_overview, hide_index=True)
 
 st.write("Tages-Übersicht:")
-st.dataframe(st.session_state.ewige_liste) 
+st.dataframe(st.session_state.ewige_liste.sort_values("Datum")) 

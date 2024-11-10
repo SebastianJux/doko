@@ -63,7 +63,7 @@ def finalise_tagesliste():
     no_button = st.button("Abbrechen", type="primary")
     
     if yes_button:
-        today = pd.to_datetime('today')
+        today = pd.to_datetime('today').strftime('%Y-%m-%dT%H:%M:%S')
         tagesliste = st.session_state.tagesliste[st.session_state.names].iloc[1:, :].sum().to_frame().T
         tagesliste["Datum"] = today
         

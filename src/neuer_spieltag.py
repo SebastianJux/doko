@@ -122,14 +122,14 @@ else:
                     {st.session_state.tagesliste.loc[st.session_state.tagesliste['Spiel Type'].isin(['Pflichtsolo']), :].shape[0]}
                     /{st.session_state.meta['n_pflichtspiele']*st.session_state.n_players}""")
     
+    if "pflicht_open" not in st.session_state:
+        st.session_state["pflicht_open"] = {
+            n: (
+                st.session_state.meta["n_pflichtspiele"]
+                - st.session_state.tagesliste.loc[(st.session_state.tagesliste["Pflichtsolo Spieler"] == n) & (st.session_state.tagesliste["Spiel Type"] == "Pflichtsolo"), :].shape[0]
+            ) for n in st.session_state.names
+        }
     if st.session_state.meta["n_pflichtspiele"] > 0:
-        if "pflicht_open" not in st.session_state:
-            st.session_state["pflicht_open"] = {
-                n: (
-                    st.session_state.meta["n_pflichtspiele"]
-                    - st.session_state.tagesliste.loc[(st.session_state.tagesliste["Pflichtsolo Spieler"] == n) & (st.session_state.tagesliste["Spiel Type"] == "Pflichtsolo"), :].shape[0]
-                ) for n in st.session_state.names
-            }
         with st.container(border=True):
             st.write("Pflichtsoli offen:")
             cols = st.columns(st.session_state.n_players)
