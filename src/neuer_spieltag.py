@@ -11,7 +11,8 @@ from src.helper import (
     game_quality_check,
     display_extrapunkte,
     compute_points,
-    continue_tagesliste
+    continue_tagesliste,
+    update_tagelisten_changes
 )
 import random
 
@@ -232,11 +233,17 @@ else:
             st.rerun()
         
     # Display the DataFrame
-    st.write("Tagesliste:")
-    st.dataframe(st.session_state.tagesliste.iloc[-1:0:-1, :].drop(columns=["Meta"]), hide_index=True)
-    
     st.write("Tagesliste Aggregiert:")
     st.dataframe(st.session_state.tagesliste[st.session_state.names].iloc[1:, :].sum().to_frame().T, hide_index=True)
+    
+    table_editor = st.radio("Eintrag anpassen?", ["Nein", "Ja"], horizontal=True)
+    if table_editor == "Ja":
+        editable_data = st.data_editor(st.session_state.tagesliste, hide_index=True)
+        if st.button("Änderungen speichern"):
+            update_tagelisten_changes(editable_data)
+    else:
+        st.write("Tagesliste:")
+        st.dataframe(st.session_state.tagesliste.iloc[-1:0:-1, :].drop(columns=["Meta"]), hide_index=True, use_container_width=True)
 
     # Button to clear the DataFrame from session state
     if st.button("Beende Tagesliste"):

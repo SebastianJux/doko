@@ -247,8 +247,8 @@ def compute_points(winners, game_points, ansagen_dict, extra_points):
             points += 1
             if key in ["Re", "Contra"]:
                 points += 1
-                
-    if extra_points["gegen_alte"] == "Ja":
+           
+    if extra_points["gegen_alte"] == "Ja" or len(winners)==3:
         if "Re_Keine90" in ansagen_dict.keys() and ansagen_dict["Re_Keine90"] is not None and game_points > 120:
             points += 1
             if "Re_Keine60" in ansagen_dict.keys() and ansagen_dict["Re_Keine60"] is not None and game_points > 90:
@@ -287,3 +287,14 @@ def continue_tagesliste(df_cols):
     st.session_state["active_players"] = determine_active_players(st.session_state.names, st.session_state.dealer)
 
     st.rerun()
+
+@st.dialog("Tagesliste Bearbeiten")
+def update_tagelisten_changes(editable_data):
+    yes_button = st.button("Anpassen")
+    no_button = st.button("Abbrechen", type="primary")    
+    if yes_button:
+        st.session_state.tagesliste = editable_data
+        write_parquet_to_blob(st.session_state.tagesliste, "tagesliste-tmp", "tmp.parquet")
+        st.rerun()
+    if no_button:
+        st.rerun()
